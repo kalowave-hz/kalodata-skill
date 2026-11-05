@@ -21,7 +21,7 @@ from pathlib import Path
 from . import __version__
 from .config import Config, config_path
 
-REPO = "sailtonight/kalodata-skill"
+REPO = "kalowave-hz/kalodata-skill"
 TAGS_URL = f"https://api.github.com/repos/{REPO}/tags?per_page=20"
 UPGRADE_CMD = f"npx skills add {REPO}"
 DEFAULT_INTERVAL = 3600.0

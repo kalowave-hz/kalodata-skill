@@ -7,8 +7,8 @@ The skill bundles a zero-dependency CLI (`kalo`, Python 3.11+ stdlib only). Inst
 ## Install
 
 ```sh
-npx skills add sailtonight/kalodata-skill               # project-level
-npx skills add sailtonight/kalodata-skill -g            # global
+npx skills add kalowave-hz/kalodata-skill               # project-level
+npx skills add kalowave-hz/kalodata-skill -g            # global
 ```
 
 ## Configure
@@ -83,7 +83,7 @@ release or manual clone is required once these changes are available on GitHub:
       "command": "uvx",
       "args": [
         "--python", ">=3.11",
-        "--from", "git+https://github.com/sailtonight/kalodata-skill",
+        "--from", "git+https://github.com/kalowave-hz/kalodata-skill",
         "kalodata-mcp"
       ],
       "env": {

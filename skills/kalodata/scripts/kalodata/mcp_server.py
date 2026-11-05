@@ -135,7 +135,7 @@ def entry() -> None:
         import mcp  # noqa: F401
     except ImportError:
         print("MCP dependencies missing. Install with: "
-              'uv pip install "git+https://github.com/sailtonight/kalodata-skill"',
+              'uv pip install "git+https://github.com/kalowave-hz/kalodata-skill"',
               file=sys.stderr)
         raise SystemExit(1)
     try:
