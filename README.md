@@ -19,7 +19,7 @@ Get a key at [open-center/account](https://www.kalodata.com/open-center/account)
 export KALODATA_API_KEY=<token>
 ```
 
-Or persist with `kalo config set --key <token>`. The token is sent as the `secret-key` header. Optional: `KALODATA_BASE_URL` (defaults to production), `KALODATA_REGION` / `KALODATA_LANGUAGE` / `KALODATA_CURRENCY`. Run `kalo` with no key configured and it prints the setup guide. `kalo credit` / `kalo credit logs` are available if you need the balance.
+Or persist with `kalo config set --key <token>`. The token is sent as the `X-API-Key` header for image search and `secret-key` for other commands. Optional: `KALODATA_BASE_URL` (defaults to production), `KALODATA_REGION` / `KALODATA_LANGUAGE` / `KALODATA_CURRENCY`. Run `kalo` with no key configured and it prints the setup guide. `kalo credit` / `kalo credit logs` are available if you need the balance.
 
 ### Upgrade notice
 
@@ -32,6 +32,7 @@ alias kalo="python3 skills/kalodata/scripts/kalo.py"
 
 kalo                                          # command map + auth status
 kalo product rank --region US --range last7Day
+kalo product picsearch /path/to/product.jpg --region US
 kalo product detail 1729508370969629931
 kalo creator rank --followers 10000-1000000
 kalo video rank --product <product_id>
@@ -54,6 +55,7 @@ help[3]:
 | Command | Description |
 |---|---|
 | `kalo <noun> rank` | Ranked lists with filters (`--category`, `--keyword`, `--price`, `--followers`, …) |
+| `kalo product picsearch <image_path>` | Find similar products by uploading a local image; standard list flags apply |
 | `kalo <noun> detail <id...>` | Full metrics for one or more ids, revenue trend included |
 | `kalo product comments <id...>` | Review insight: pain points, positives, usage scenarios |
 | `kalo product specs <id...>` | Selling points and spec attributes (`--lang zh-CN` translates) |
@@ -64,10 +66,19 @@ help[3]:
 
 Nouns: `product` · `shop` · `creator` · `video` · `live` · `category`. All list commands accept `--region --range --page --limit --sort --asc --fields --json`; see `kalo <command> --help` for details. Exit codes: `0` success, `1` error, `2` usage error.
 
+Image search uploads a local image file (e.g. JPEG, PNG or WebP) as multipart field
+`pic`, with JSON search parameters in `req`. Download image URLs to a file first.
+It uses the configured API key in `X-API-Key` without `X-User-Id`; the key/account needs image-search
+access. To use staging for one command:
+
+```sh
+KALODATA_BASE_URL=https://staging.kalodata.com/openapi/v1 kalo product picsearch /path/to/product.jpg --json
+```
+
 ## Local MCP server
 
-The repository also includes a stdio MCP server with 20 query tools, including
-`product_rank`, `product_detail`, `creator_rank`, `category_search`,
+The repository also includes a stdio MCP server with 21 query tools, including
+`product_rank`, `product_picsearch`, `product_detail`, `creator_rank`, `category_search`,
 `credit_balance` and `credit_logs`. It shares the CLI's API client, configuration,
 filters and validation. The skill's CLI scripts still run on Python's standard library
 alone; the MCP dependencies are only installed with the package.
@@ -124,7 +135,9 @@ or rich-text documents can turn it into a Markdown link such as `[https://...](h
 Tool arguments use flag names without `--`, e.g.
 `product_rank({"region":"US","range":"last7Day","limit":5})`.
 Batch tools use string arrays, e.g. `product_detail({"ids":["1729508370969629931"]})`;
-`category_search` takes a single `keyword` string. Batches accept at most 100 IDs.
+`category_search` takes a single `keyword` string. `product_picsearch` takes an
+`image_path` string pointing to a local file on the machine running the MCP server.
+Batches accept at most 100 IDs.
 Tools return raw JSON under `data`, matching the CLI's `--json` mode; terminal-only
 options (`json`, `fields`, `full`, `comments`) are omitted from tool schemas.
 Individual batch failures remain in the result; a wholly failed query is an MCP

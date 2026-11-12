@@ -21,6 +21,7 @@ DESCRIPTION = (
 # (command, what) — the `what` column is deliberately terse; details live in --help
 COMMAND_TABLE = [
     ("kalo product rank", "top products; --category --keyword --price --launch --shop --creator"),
+    ("kalo product picsearch <image_path>", "find similar products by uploading a local image"),
     ("kalo product detail <id...>", "price range, shop id, revenue trend, description"),
     ("kalo product comments <id...>", "review insight: pain points, positives, scenarios"),
     ("kalo product specs <id...>", "selling points + spec attributes; --lang zh-CN to translate"),

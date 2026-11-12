@@ -63,6 +63,29 @@ def test_invalid_arguments_do_not_query(env, arguments):
     assert env.requests == []
 
 
+def test_picsearch_tool(env, image_file, capsys):
+    env.responses["/tiktok/product/picsearch/one-step"] = {
+        "success": True, "data": [{"product_id": "123", "revenue": "12.5"}],
+    }
+
+    async def check():
+        async with Client(create_server()) as client:
+            tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+            assert tools["product_picsearch"].input_schema["required"] == ["image_path"]
+            result = await client.call_tool("product_picsearch", {"image_path": str(image_file)})
+            assert not result.is_error
+            assert result.structured_content == {"data": [{"product_id": "123", "revenue": 12.5}]}
+
+    anyio.run(check)
+    assert capsys.readouterr().out == ""
+    path, headers, body = env.requests[0]
+    assert path == "/tiktok/product/picsearch/one-step"
+    assert headers["x-api-key"] == "test-key"
+    assert "secret-key" not in headers
+    assert "x-user-id" not in headers
+    assert body["pic"]["content"] == image_file.read_bytes()
+
+
 def test_batch_partial_failure_and_total_failure(env):
     env.responses["/tiktok/product/detail"] = lambda body: (
         {"success": True, "data": {"product_id": "1"}}

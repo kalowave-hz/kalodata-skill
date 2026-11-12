@@ -1,6 +1,9 @@
 import json
+import base64
 import sys
 import threading
+from email import policy
+from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -16,7 +19,23 @@ class MockKalo(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(length) or b"{}")
+        raw = self.rfile.read(length)
+        content_type = self.headers.get("Content-Type", "")
+        if content_type.startswith("multipart/form-data"):
+            message = BytesParser(policy=policy.default).parsebytes(
+                f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode() + raw
+            )
+            body = {}
+            for part in message.iter_parts():
+                name = part.get_param("name", header="content-disposition")
+                content = part.get_payload(decode=True)
+                body[name] = (
+                    {"filename": part.get_filename(), "content_type": part.get_content_type(),
+                     "content": content}
+                    if part.get_filename() is not None else content.decode("utf-8")
+                )
+        else:
+            body = json.loads(raw or b"{}")
         self._respond(body)
 
     def do_GET(self):
@@ -57,3 +76,12 @@ def env(monkeypatch, mock_server, tmp_path):
     monkeypatch.setenv("KALODATA_BASE_URL", f"http://127.0.0.1:{mock_server.server_address[1]}")
     monkeypatch.setenv("KALODATA_CONFIG_DIR", str(tmp_path / "cfg"))
     return mock_server
+
+
+@pytest.fixture
+def image_file(tmp_path):
+    image = tmp_path / "product.png"
+    image.write_bytes(base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="
+    ))
+    return image

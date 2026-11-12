@@ -1,10 +1,14 @@
-"""`kalo product` — product rank / detail."""
+"""`kalo product` — rankings, image search, details and insights."""
 
 from __future__ import annotations
 
+import json
+import mimetypes
+from pathlib import Path
+
 from .. import api, render
 from ..core import Command, Flag
-from ..errors import KaloError
+from ..errors import KaloError, UsageError
 from . import common
 
 SORT_FIELDS = (
@@ -82,6 +86,41 @@ def rank(cfg, opts, args):
         suggestions=(
             "Run `kalo product detail <product_id>` for price range, shop id, revenue trend",
             "Run `kalo creator rank --product <product_id>` for creators selling a product",
+        ),
+    )
+
+
+def picsearch(cfg, opts, args):
+    image = Path(args[0]).expanduser()
+    try:
+        if not image.is_file():
+            raise UsageError(f"image file not found or not a regular file: {image}")
+        content_type = mimetypes.guess_type(image.name)[0]
+        if not content_type or not content_type.startswith("image/"):
+            raise UsageError("expected an image file, e.g. product.jpg, product.png or product.webp")
+        contents = image.read_bytes()
+    except OSError as exc:
+        raise UsageError(f"cannot read image file '{image}': {exc.strerror}") from exc
+    if not contents:
+        raise UsageError(f"image file is empty: {image}")
+
+    endpoint = "/tiktok/product/picsearch/one-step"
+
+    def fetch(body):
+        return api.request(
+            cfg, endpoint, {"req": json.dumps(body)},
+            files={"pic": (image.name, contents, content_type)},
+            auth_header="X-API-Key",
+            timeout=60, empty_on_not_found=True,
+        )
+
+    return common.run_rank(
+        cfg, opts, endpoint=endpoint, noun="products", tier="rank",
+        default_fields=DEFAULT_FIELDS, all_fields=ALL_FIELDS, sort_fields=SORT_FIELDS,
+        body_extra={}, title_fields=("product_name",), fetch=fetch,
+        suggestions=(
+            "Run `kalo product detail <product_id>` for price range, shop id, revenue trend",
+            "Run `kalo video rank --product <product_id>` for videos selling a matching product",
         ),
     )
 
@@ -302,6 +341,19 @@ COMMANDS = [
         examples=[
             "kalo product rank --region US --category 601739 --sort revenue",
             "kalo product rank --keyword 'hair dryer' --price 20-100 --launch '<7'",
+        ],
+    ),
+    Command(
+        path="product picsearch",
+        summary="Find similar TikTok Shop products by uploading a local image file",
+        handler=picsearch,
+        flags=common.common_flags("rank") + common.list_flags(SORT_FIELDS),
+        positional="image_path",
+        pos_min=1,
+        pos_max=1,
+        examples=[
+            "kalo product picsearch /path/to/product.jpg --region US --range last30Day",
+            "kalo product picsearch /path/to/product.png --sort sales_volumn --limit 20 --json",
         ],
     ),
     Command(

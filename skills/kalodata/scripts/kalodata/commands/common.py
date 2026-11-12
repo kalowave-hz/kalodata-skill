@@ -271,6 +271,7 @@ def run_rank(
     suggestions: tuple = (),
     omit_sort: bool = False,
     timeout: float = 30.0,
+    fetch=None,
 ) -> int:
     body = base_body(cfg, opts, tier)
     page = validate.clamp(int(opts.get("page") or 1), 1, 5)
@@ -288,7 +289,8 @@ def run_rank(
     body.update(body_extra)
     fields = resolve_fields(opts, default_fields, all_fields)
 
-    data = api.request(cfg, endpoint, body, timeout=timeout, empty_on_not_found=True)
+    data = (fetch(body) if fetch is not None else
+            api.request(cfg, endpoint, body, timeout=timeout, empty_on_not_found=True))
     rows = [coerce_numbers(r) for r in api.as_list(data)]
 
     if opts.get("json"):
