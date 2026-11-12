@@ -2,8 +2,8 @@
 name: kalodata
 description: >
   Use for TikTok Shop market data: trending products, top creators, shop/product
-  sales and revenue, viral videos, livestreams, category rankings — 选品、带货达人、
-  店铺/商品销量、爆款视频、直播带货、TikTok 小店数据. Answers come from KaloData via the bundled
+  sales and revenue, product image search, viral videos, livestreams, category rankings — 选品、带货达人、
+  以图搜品、店铺/商品销量、爆款视频、直播带货、TikTok 小店数据. Answers come from KaloData via the bundled
   `kalo` CLI (Python, zero install). Use whenever the user researches TikTok Shop, even if
   they never say "kalodata".
 ---
@@ -27,7 +27,7 @@ Errors are structured on stdout with actionable `help:` lines. Exit codes: 0 ok,
 
 ## Setup — check this before the first query
 
-Every command needs a KaloData API key (sent as the `secret-key` header). Before the first
+Every command needs a KaloData API key (`X-API-Key` for image search, `secret-key` for other commands). Before the first
 query of a session run `kalo config` and look at `api_key`. If it says `missing`, stop — don't
 guess a key and don't retry the query. Walk the user through setup and wait:
 
@@ -46,6 +46,7 @@ hesitate. Only mention credits if the user asks, or if a call fails for insuffic
 | command | what |
 |---|---|
 | `kalo product rank` | top products; --category --keyword --price --launch --shop --creator |
+| `kalo product picsearch <image_path>` | find similar products by uploading a local product image |
 | `kalo product detail <id...>` | price range, shop id, revenue trend, product description |
 | `kalo product comments <id...>` | review insight: pain points, positives, usage scenarios |
 | `kalo product specs <id...>` | selling points (highlights) and spec attributes; --lang zh-CN translates |
@@ -77,8 +78,29 @@ hesitate. Only mention credits if the user asks, or if a call fails for insuffic
   the call — hand them to the user or download them now, never cache them
 - Run `kalo <command> --help` for per-command flags and examples
 
+## Image search
+
+When the user provides a product image or asks to find similar products (以图搜品), use
+`kalo product picsearch <image_path>`. Pass the local image path; download remote images
+to a local file first. The command uploads the image as multipart field `pic` with search
+parameters in `req`, using the configured API key in `X-API-Key` without an `X-User-Id` header.
+
+```sh
+kalo product picsearch /path/to/product.jpg --region US --range last30Day
+kalo product picsearch /path/to/product.png --sort sales_volumn --limit 20 --json
+```
+
+The usual list flags control region, date range, language, currency, pagination, sorting
+and output fields. The API key/account needs image-search access. For staging, set the
+base URL for that invocation; production is the default:
+
+```sh
+KALODATA_BASE_URL=https://staging.kalodata.com/openapi/v1 kalo product picsearch /path/to/product.jpg
+```
+
 ## Typical flows
 
+- Image sourcing: `kalo product picsearch /path/to/product.jpg` → `kalo product detail <product_id>` → `kalo video rank --product <product_id>`
 - Trending research: `kalo product rank --region US --range last7Day` → `kalo product detail <id>` → `kalo video rank --product <id>`
 - Creator scouting: `kalo creator rank --category <id> --followers 10000-1000000` → `kalo creator detail <id>` (has contact email)
 - Category drilldown: `kalo category search "beauty"` → `kalo category detail <id>` → `kalo shop rank --category <id>`

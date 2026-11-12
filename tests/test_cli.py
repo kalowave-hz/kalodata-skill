@@ -482,6 +482,6 @@ def test_home_lists_all_commands(capsys, monkeypatch, tmp_path):
     monkeypatch.setenv("KALODATA_CONFIG_DIR", str(tmp_path))
     code, out = run(capsys)
     assert code == 0
-    assert "commands[21]" in out
+    assert "commands[22]" in out
     assert "kalo config" in out
     assert "kalo product comments <id...>" in out

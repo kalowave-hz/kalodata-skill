@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 from . import __version__
 from .config import Config
@@ -34,10 +35,10 @@ def _require_auth(cfg: Config) -> None:
         raise KaloError(NO_KEY_MESSAGE, kind="auth", help_lines=AUTH_HELP)
 
 
-def _headers(cfg: Config, extra: dict | None) -> dict:
+def _headers(cfg: Config, extra: dict | None, auth_header: str = "secret-key") -> dict:
     h = {
         "Content-Type": "application/json;charset=UTF-8",
-        "secret-key": cfg.api_key,
+        auth_header: cfg.api_key,
         "source-type": "SKILL",
         "skill-version": __version__,
     }
@@ -87,6 +88,26 @@ def _do_request(url: str, data: bytes | None, headers: dict, timeout: float, met
         raise _Retryable(str(e)) from e
 
 
+def _multipart(body: dict, files: dict[str, tuple[str, bytes, str]]) -> tuple[bytes, str]:
+    """Encode text fields and (filename, contents, MIME type) file parts."""
+    boundary = "kalodata-" + uuid.uuid4().hex
+    parts = []
+    for name, value in body.items():
+        parts.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n'.encode()
+            + str(value).encode("utf-8") + b"\r\n"
+        )
+    for name, (filename, contents, content_type) in files.items():
+        filename = urllib.parse.quote(filename, safe="._-")
+        parts.append(
+            (f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; '
+             f'filename="{filename}"\r\nContent-Type: {content_type}\r\n\r\n').encode()
+            + contents + b"\r\n"
+        )
+    parts.append(f"--{boundary}--\r\n".encode())
+    return b"".join(parts), f"multipart/form-data; boundary={boundary}"
+
+
 def request(
     cfg: Config,
     path: str,
@@ -96,15 +117,19 @@ def request(
     timeout: float = 30.0,
     empty_on_not_found: bool = False,
     method: str = "POST",
+    files: dict[str, tuple[str, bytes, str]] | None = None,
+    auth_header: str = "secret-key",
 ):
-    """Call base_url+path (JSON body for POST, query params for GET); return the envelope's `data`."""
+    """Return envelope data; use JSON, GET query params, or multipart text/file fields."""
     _require_auth(cfg)
     url = cfg.base_url.rstrip("/") + path
-    headers = _headers(cfg, extra_headers)
+    headers = _headers(cfg, extra_headers, auth_header)
     if method == "GET":
         if body:
             url += "?" + urllib.parse.urlencode(body)
         payload = None
+    elif files:
+        payload, headers["Content-Type"] = _multipart(body, files)
     else:
         payload = json.dumps(body).encode("utf-8")
 
