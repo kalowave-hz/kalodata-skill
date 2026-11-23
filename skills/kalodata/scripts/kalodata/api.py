@@ -7,6 +7,7 @@ KaloError with an actionable suggestion.
 from __future__ import annotations
 
 import json
+import os
 import random
 import socket
 import time
@@ -21,6 +22,9 @@ from .errors import KaloError
 from .onboarding import NO_KEY_MESSAGE, SETUP_LINES
 
 _RETRIES = 3
+# Hosts that bundle the skill (e.g. the KaloPilot Assistant) set KALO_SOURCE_TYPE
+# so its calls are billed under their own source type.
+DEFAULT_SOURCE_TYPE = "SKILL"
 _PARAM_HINTS = ("must be", "invalid", "required", "for input string", "parameter")
 
 AUTH_HELP = SETUP_LINES
@@ -39,7 +43,7 @@ def _headers(cfg: Config, extra: dict | None, auth_header: str = "secret-key") -
     h = {
         "Content-Type": "application/json;charset=UTF-8",
         auth_header: cfg.api_key,
-        "source-type": "SKILL",
+        "source-type": os.environ.get("KALO_SOURCE_TYPE") or DEFAULT_SOURCE_TYPE,
         "skill-version": __version__,
     }
     if extra:

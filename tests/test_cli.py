@@ -485,3 +485,11 @@ def test_home_lists_all_commands(capsys, monkeypatch, tmp_path):
     assert "commands[22]" in out
     assert "kalo config" in out
     assert "kalo product comments <id...>" in out
+
+
+def test_source_type_follows_the_host(capsys, env, monkeypatch):
+    monkeypatch.setenv("KALO_SOURCE_TYPE", "KALOS")
+    env.responses["/tiktok/product/rank"] = {"success": True, "data": []}
+    run(capsys, "product", "rank")
+    _, headers, _ = env.requests[0]
+    assert headers["source-type"] == "KALOS"
